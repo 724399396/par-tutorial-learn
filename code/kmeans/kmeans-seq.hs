@@ -10,22 +10,20 @@ import Text.Printf
 import Data.List
 import Data.Function
 import Data.Binary (decodeFile)
-import Debug.Trace
-import Control.DeepSeq
 import System.Environment
 import Data.Time.Clock
 import Control.Exception
 
+main :: IO ()
 main = do
   points <- decodeFile "points.bin"
   clusters <- getClusters "clusters"
   let nclusters = length clusters
   args <- getArgs
-  evaluate (length points)
+  _ <- evaluate (length points)
   t0 <- getCurrentTime
   final_clusters <- case args of
-   ["seq"] ->
-   -- ["par",n] -> kmeans_par (read n) nclusters points clusters
+   ["seq"] -> kmeans_seq nclusters points clusters
    _other -> error "args"
   t1 <- getCurrentTime
   print final_clusters
@@ -38,24 +36,18 @@ kmeans_seq :: Int -> [Vector] -> [Cluster] -> IO [Cluster]
 kmeans_seq nclusters points clusters = do
   let
       loop :: Int -> [Cluster] -> IO [Cluster]
-      loop n clusters | n > tooMany = do printf "giving up."; return clusters
-      loop n clusters = do
+      loop n clusters' | n > tooMany = do printf "giving up."; return clusters'
+      loop n clusters' = do
         hPrintf stderr "iteration %d\n" n
-        hPutStr stderr (unlines (map show clusters))
-        let clusters' = step nclusters clusters points
-        if clusters' == clusters
-           then return clusters
+        hPutStr stderr (unlines (map show clusters'))
+        let clusters'' = step nclusters clusters' points
+        if clusters'' == clusters'
+           then return clusters'
            else loop (n+1) clusters'
   --
   loop 0 clusters
 
-kmeans_par :: Int -> Int -> [Vector] -> [Cluster] -> IO [Cluster]
-kmeans_par n nclusters points clusters
-   = error "kmeans_par not defined!"
-   -- hint: one approach is to divide the points into n sets, call
-   -- step on the sets in parallel and combine the results using
-   -- 'reduce', below.
-
+tooMany :: Int
 tooMany = 50
 
 -- -----------------------------------------------------------------------------

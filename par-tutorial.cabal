@@ -1,0 +1,26 @@
+name:           par-tutorial
+version:        1.0.0
+build-type:     Simple
+cabal-version:  >= 1.10
+category:       System
+
+-- STUDENTS: Make sure you add any no haskell source files you want included in
+-- your submission here!
+extra-source-files:
+  README
+
+library
+  hs-source-dirs: code, code/kmeans, code/parinfer
+  exposed-modules: Sudoku, KMeansCommon
+  build-depends:
+                base < 5
+              , parallel
+              , array
+              , deepseq
+              , bytestring
+              , binary
+              , time
+              , monad-par
+  
+  default-language: Haskell2010
+  ghc-options: -Wall

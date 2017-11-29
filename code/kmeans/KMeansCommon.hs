@@ -1,14 +1,18 @@
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric      #-}
 module KMeansCommon where
 
-import Data.List (foldl')
-import Data.Typeable (Typeable)
-import Data.Data (Data)
+import           Control.DeepSeq
+import           Data.Binary
 import qualified Data.ByteString.Char8 as B
-import Data.Binary
-import Control.DeepSeq
+import           Data.Data             (Data)
+import           Data.List             (foldl')
+import           Data.Typeable         (Typeable)
+import           GHC.Generics
 
-data Vector = Vector {-#UNPACK#-}!Double {-#UNPACK#-}!Double deriving (Show,Read,Typeable,Data,Eq)
+data Vector = Vector {-#UNPACK#-}!Double {-#UNPACK#-}!Double deriving (Show,Read,Typeable,Data,Eq,Generic)
+
+instance NFData Vector
 
 instance Binary Vector where put (Vector a b) = put a>>put b
                              get = do a<-get
@@ -21,12 +25,12 @@ data Cluster = Cluster
                   clCount :: {-#UNPACK#-}!Int,
                   clSum   :: {-#UNPACK#-}!Vector,
                   clCent  :: {-#UNPACK#-}!Vector
-               } deriving (Show,Read,Typeable,Data,Eq)
+               } deriving (Show,Read,Typeable,Data,Eq,Generic)
 
 instance NFData Cluster  -- default should be fine
 
 sqDistance :: Vector -> Vector -> Double
-sqDistance (Vector x1 y1) (Vector x2 y2) = ((x1-x2)^2) + ((y1-y2)^2)
+sqDistance (Vector x1 y1) (Vector x2 y2) = ((x1-x2)^(2::Int)) + ((y1-y2)^(2::Int))
 
 makeCluster :: Int -> [Vector] -> Cluster
 makeCluster clid vecs
@@ -39,6 +43,7 @@ makeCluster clid vecs
          centre = Vector (a / fromIntegral count) (b / fromIntegral count)
          count = length vecs
 
+combineClusters :: Cluster -> Cluster -> Cluster
 combineClusters c1 c2 =
   Cluster {clId = clId c1,
            clCount = count,
@@ -47,7 +52,10 @@ combineClusters c1 c2 =
   where count = clCount c1 + clCount c2
         vecsum@(Vector a b)  = addVector (clSum c1) (clSum c2)
 
+addVector :: Vector -> Vector -> Vector
 addVector (Vector a b) (Vector c d) = Vector (a+c) (b+d)
+
+zeroVector :: Vector
 zeroVector = Vector 0 0
 
 getPoints :: FilePath -> IO [Vector]

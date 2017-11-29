@@ -14,33 +14,32 @@
 -- Usage (Par monad):
 --   $ ./kmeans-par par 600 +RTS -N4
 
-import System.IO
-import KMeansCommon
-import Data.Array
-import Text.Printf
-import Data.List
-import Data.Function
-import Data.Binary (decodeFile)
-import Debug.Trace
-import Control.Parallel.Strategies as Strategies
-import Control.Monad.Par as Par
-import Control.DeepSeq
-import System.Environment
-import Data.Time.Clock
-import Control.Exception
+import           Control.Exception
+import           Control.Monad.Par           as Par
+import           Control.Parallel.Strategies as Strategies
+import           Data.Array
+import           Data.Binary                 (decodeFile)
+import           Data.Function
+import           Data.List
+import           Data.Time.Clock
+import           KMeansCommon
+import           System.Environment
+import           System.IO
+import           Text.Printf
 
+main :: IO ()
 main = do
   points <- decodeFile "points.bin"
   clusters <- getClusters "clusters"
   let nclusters = length clusters
   args <- getArgs
-  evaluate (length points)
+  _ <- evaluate (length points)
   t0 <- getCurrentTime
   final_clusters <- case args of
-   ["seq"] -> kmeans_seq nclusters points clusters
+   ["seq"]     -> kmeans_seq nclusters points clusters
    ["strat",n] -> kmeans_strat (read n) nclusters points clusters
-   ["par",n] -> kmeans_par (read n) nclusters points clusters
-   _other -> error "args"
+   ["par",n]   -> kmeans_par (read n) nclusters points clusters
+   _other      -> error "args"
   t1 <- getCurrentTime
   print final_clusters
   printf "Total time: %.2f\n" (realToFrac (diffUTCTime t1 t0) :: Double)
@@ -52,46 +51,47 @@ kmeans_seq :: Int -> [Vector] -> [Cluster] -> IO [Cluster]
 kmeans_seq nclusters points clusters = do
   let
       loop :: Int -> [Cluster] -> IO [Cluster]
-      loop n clusters | n > tooMany = do printf "giving up."; return clusters
-      loop n clusters = do
+      loop n clusters' | n > tooMany = do printf "giving up."; return clusters'
+      loop n clusters' = do
         hPrintf stderr "iteration %d\n" n
-        hPutStr stderr (unlines (map show clusters))
-        let clusters' = step nclusters clusters points
-        if clusters' == clusters
-           then return clusters
+        hPutStr stderr (unlines (map show clusters'))
+        let clusters'' = step nclusters clusters' points
+        if clusters'' == clusters'
+           then return clusters'
            else loop (n+1) clusters'
   --
   loop 0 clusters
 
+tooMany :: Int
 tooMany = 50
 
 -- -----------------------------------------------------------------------------
 -- K-Means: repeatedly step until convergence (Strategies)
 
-split :: Int -> [a] -> [[a]] 
-split numChunks l = splitSize (ceiling $ fromIntegral (length l) / fromIntegral numChunks) l
+split :: Int -> [a] -> [[a]]
+split numChunks l = splitSize (ceiling $ (fromIntegral (length l) :: Double) / fromIntegral numChunks) l
    where
       splitSize _ [] = []
-      splitSize i v = take i v : splitSize i (drop i v)
+      splitSize i v  = take i v : splitSize i (drop i v)
 
 kmeans_strat :: Int -> Int -> [Vector] -> [Cluster] -> IO [Cluster]
 kmeans_strat mappers nclusters points clusters = do
   let chunks = split mappers points
   let
       loop :: Int -> [Cluster] -> IO [Cluster]
-      loop n clusters | n > tooMany = do printf "giving up."; return clusters
-      loop n clusters = do
+      loop n clusters' | n > tooMany = do printf "giving up."; return clusters'
+      loop n clusters' = do
         hPrintf stderr "iteration %d\n" n
-        hPutStr stderr (unlines (map show clusters))
+        hPutStr stderr (unlines (map show clusters'))
         let
-             new_clusterss = map (step nclusters clusters) chunks
+             new_clusterss = map (step nclusters clusters') chunks
                                `using` parList rdeepseq
 
-             clusters' = reduce nclusters new_clusterss
+             clusters'' = reduce nclusters new_clusterss
 
-        if clusters' == clusters
-           then return clusters
-           else loop (n+1) clusters'
+        if clusters'' == clusters'
+           then return clusters'
+           else loop (n+1) clusters''
   --
   final <- loop 0 clusters
   return final
@@ -104,18 +104,18 @@ kmeans_par mappers nclusters points clusters = do
   let chunks = split mappers points
   let
       loop :: Int -> [Cluster] -> IO [Cluster]
-      loop n clusters | n > tooMany = do printf "giving up."; return clusters
-      loop n clusters = do
+      loop n clusters' | n > tooMany = do printf "giving up."; return clusters'
+      loop n clusters' = do
         hPrintf stderr "iteration %d\n" n
-        hPutStr stderr (unlines (map show clusters))
+        hPutStr stderr (unlines (map show clusters'))
         let
-             new_clusterss = runPar $ Par.parMap (step nclusters clusters) chunks
+             new_clusterss = runPar $ Par.parMap (step nclusters clusters') chunks
 
-             clusters' = reduce nclusters new_clusterss
+             clusters'' = reduce nclusters new_clusterss
 
-        if clusters' == clusters
-           then return clusters
-           else loop (n+1) clusters'
+        if clusters'' == clusters'
+           then return clusters'
+           else loop (n+1) clusters''
   --
   final <- loop 0 clusters
   return final
@@ -128,7 +128,7 @@ reduce nclusters css =
   concatMap combine $ elems $
      accumArray (flip (:)) [] (0,nclusters) [ (clId c, c) | c <- concat css]
  where
-  combine [] = []
+  combine []     = []
   combine (c:cs) = [foldr combineClusters c cs]
 
 
