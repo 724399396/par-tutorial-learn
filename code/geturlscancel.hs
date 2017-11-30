@@ -19,8 +19,6 @@ import Control.Concurrent
 import Control.Exception
 import Text.Printf
 import qualified Data.ByteString as B
-import Data.Typeable
-import Prelude hiding (catch)
 
 -----------------------------------------------------------------------------
 -- Our Async API:
@@ -34,23 +32,25 @@ async action = do
    return (Async t m)
 
 wait :: Async a -> IO (Either SomeException a)
-wait (Async t var) = readMVar var
+wait (Async _ var) = readMVar var
 
 cancel :: Async a -> IO ()
-cancel (Async t var) = throwTo t ThreadKilled
+cancel (Async t _) = throwTo t ThreadKilled
 
 -----------------------------------------------------------------------------
 
+sites :: [String]
 sites = ["http://www.google.com",
          "http://www.bing.com",
          "http://www.yahoo.com",
          "http://www.wikipedia.com/wiki/Spade",
          "http://www.wikipedia.com/wiki/Shovel"]
 
+main :: IO ()
 main = do
   as <- mapM (async.http) sites
 
-  forkIO $ do
+  _ <- forkIO $ do
      hSetBuffering stdin NoBuffering
      forever $ do
         c <- getChar

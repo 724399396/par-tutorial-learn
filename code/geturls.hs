@@ -7,14 +7,12 @@
 -- Compile with:
 --    ghc -threaded --make geturls.hs
 
-import GetURL
-import TimeIt
+import           GetURL
+import           TimeIt
 
-import Control.Monad
-import Control.Concurrent
-import Control.Exception
-import Text.Printf
-import qualified Data.ByteString as B
+import           Control.Concurrent
+import qualified Data.ByteString    as B
+import           Text.Printf
 
 -----------------------------------------------------------------------------
 -- Our Async API:
@@ -24,7 +22,7 @@ data Async a = Async (MVar a)
 async :: IO a -> IO (Async a)
 async action = do
    var <- newEmptyMVar
-   forkIO (action >>= putMVar var)
+   _ <- forkIO (action >>= putMVar var)
    return (Async var)
 
 wait :: Async a -> IO a
@@ -32,13 +30,15 @@ wait (Async var) = readMVar var
 
 -----------------------------------------------------------------------------
 
+sites :: [String]
 sites = ["http://www.google.com",
          "http://www.bing.com",
          "http://www.yahoo.com",
          "http://www.wikipedia.com/wiki/Spade",
          "http://www.wikipedia.com/wiki/Shovel"]
 
-main = mapM (async.http) sites >>= mapM wait
+main :: IO ()
+main = mapM (async.http) sites >>= mapM_ wait
  where
    http url = do
      (page, time) <- timeit $ getURL url

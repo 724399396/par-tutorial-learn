@@ -21,6 +21,8 @@ library
               , binary
               , time
               , monad-par
+              , HTTP
+              , network-uri
   
   default-language: Haskell2010
   ghc-options: -Wall
