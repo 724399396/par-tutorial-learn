@@ -8,13 +8,14 @@ import Control.Exception
 port :: Int
 port = 44444
 
+main :: IO ()
 main = withSocketsDo $ do
   sock <- listenOn (PortNumber (fromIntegral port))
   printf "Listening on port %d\n" port
   forever $ do
-     (handle, host, port) <- accept sock
+     (h, host, _) <- accept sock
      printf "Accepted connection from %s: %s\n" host (show port)
-     forkIO (talk handle `finally` hClose handle)
+     forkIO (talk h `finally` hClose h)
 
 talk :: Handle -> IO ()
 talk h = do

@@ -10,7 +10,7 @@ extra-source-files:
   README
 
 library
-  hs-source-dirs: code, code/kmeans, code/parinfer
+  hs-source-dirs: code, code/kmeans, code/parinfer, code/sudoku
   exposed-modules: Sudoku, KMeansCommon
   build-depends:
                 base < 5
@@ -23,6 +23,10 @@ library
               , monad-par
               , HTTP
               , network-uri
+              , unique
+              , stm
+              , containers
+              , network
   
   default-language: Haskell2010
   ghc-options: -Wall
